@@ -31,6 +31,7 @@ jobs:
     name: Build & Push Docker Image
     runs-on: ubuntu-latest
     needs: test
+    environment: backend-cicd
 
     outputs:
       image_tag: ${{ steps.meta.outputs.version }}
@@ -71,6 +72,7 @@ jobs:
     name: Deploy to VPS
     runs-on: ubuntu-latest
     needs: build-and-push
+    environment: backend-cicd
 
     steps:
       - name: Deploy via SSH
