@@ -41,8 +41,6 @@ springdoc:
   show-actuator: false
 
 logging:
-  file:
-    name: logs/app.log
   level:
     root: INFO
     br.com.pauloviniciusdeveloper.books.auth: INFO
