@@ -15,6 +15,13 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - finance-net
 
 volumes:
   pgdata:
+
+networks:
+  finance-net:
+    name: finance-net
+    external: true
