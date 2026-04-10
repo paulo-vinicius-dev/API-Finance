@@ -1,6 +1,6 @@
 spring:
   application:
-    name: books
+    name: finance
 
   datasource:
     url: ${DATABASE_URL}
@@ -13,6 +13,7 @@ spring:
       platform: postgres
 
   jpa:
+    defer-datasource-initialization: true
     hibernate:
       ddl-auto: update
     show-sql: false
