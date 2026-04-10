@@ -6,7 +6,14 @@ on:
       - main
     paths:
       - "**"
-      - ".github/workflows/backend-deploy.yml"
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
@@ -31,7 +38,8 @@ jobs:
     name: Build & Push Docker Image
     runs-on: ubuntu-latest
     needs: test
-    environment: backend-cicd
+    environment: production
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
 
     outputs:
       image_tag: ${{ steps.meta.outputs.version }}
@@ -72,7 +80,8 @@ jobs:
     name: Deploy to VPS
     runs-on: ubuntu-latest
     needs: build-and-push
-    environment: backend-cicd
+    environment: production
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
 
     steps:
       - name: Deploy via SSH
@@ -85,14 +94,16 @@ jobs:
           script: |
             set -e
 
-            IMAGE="${{ secrets.DOCKER_USERNAME }}/finance-backend:latest"
+            IMAGE="${{ secrets.DOCKER_USERNAME }}/finance-backend:${{ needs.build-and-push.outputs.image_tag }}"
 
-            echo "Pulling latest image..."
+            echo "Pulling image: $IMAGE"
             docker pull "$IMAGE"
 
-            echo "Stopping old container (if running)..."
-            docker stop finance-backend || true
-            docker rm finance-backend || true
+            echo "Ensuring finance-net network exists..."
+            docker network create finance-net 2>/dev/null || true
+
+            echo "Preserving old container for rollback..."
+            docker rename finance-backend finance-backend-prev 2>/dev/null || true
 
             echo "Starting new container..."
             docker run -d \
@@ -108,9 +119,35 @@ jobs:
               -e REFRESH_TOKEN_EXPIRY_SECONDS="${{ secrets.REFRESH_TOKEN_EXPIRY_SECONDS }}" \
               "$IMAGE"
 
-            echo "Waiting for health check..."
-            sleep 15
-            docker inspect --format='{{.State.Health.Status}}' finance-backend
+            echo "Waiting for health check (up to 120s)..."
+            HEALTH_OK=false
+            for i in $(seq 1 24); do
+              if curl -sf http://localhost:8080/actuator/health > /dev/null 2>&1; then
+                echo "Health check passed on attempt $i"
+                HEALTH_OK=true
+                break
+              fi
+              echo "Attempt $i/24 failed, retrying in 5s..."
+              sleep 5
+            done
+
+            if [ "$HEALTH_OK" = "false" ]; then
+              echo "Health check failed — rolling back to previous container..."
+              docker stop finance-backend || true
+              docker rm finance-backend || true
+              if docker inspect finance-backend-prev > /dev/null 2>&1; then
+                docker rename finance-backend-prev finance-backend
+                docker start finance-backend
+                echo "Rollback complete. Previous container restored."
+              else
+                echo "No previous container to restore."
+              fi
+              exit 1
+            fi
+
+            echo "Removing previous container..."
+            docker stop finance-backend-prev 2>/dev/null || true
+            docker rm finance-backend-prev 2>/dev/null || true
 
             echo "Removing dangling images..."
             docker image prune -f
