@@ -103,8 +103,11 @@ jobs:
             docker network create finance-net 2>/dev/null || true
 
             echo "Preserving old container for rollback..."
+            docker stop finance-backend-prev 2>/dev/null || true
+            docker rm finance-backend-prev 2>/dev/null || true
             docker rename finance-backend finance-backend-prev 2>/dev/null || true
             docker stop finance-backend-prev 2>/dev/null || true
+            docker rm finance-backend 2>/dev/null || true
 
             echo "Starting new container..."
             docker run -d \
