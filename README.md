@@ -104,6 +104,42 @@ Authorization: Bearer <access_token>
 |--------|---------------------|----------------------------------|------|
 | GET    | `/api/v1/users/me`  | Dados do usuário autenticado     | Sim  |
 
+### Admin — Gerenciamento de Usuários
+
+> Todos os endpoints abaixo exigem autenticação **e** a role `ADMIN`.
+
+| Método | Endpoint                        | Descrição                                               | Auth  |
+|--------|---------------------------------|---------------------------------------------------------|-------|
+| GET    | `/api/v1/admin/users`           | Listar todos os usuários (paginado, busca por nome/email) | ADMIN |
+| GET    | `/api/v1/admin/users/{id}`      | Buscar usuário por ID                                   | ADMIN |
+| PATCH  | `/api/v1/admin/users/{id}`      | Atualizar status ativo e perfis de um usuário           | ADMIN |
+| DELETE | `/api/v1/admin/users/{id}`      | Remover permanentemente um usuário                      | ADMIN |
+
+**Parâmetros de listagem (`GET /api/v1/admin/users`):**
+
+| Parâmetro | Tipo   | Padrão     | Descrição                              |
+|-----------|--------|------------|----------------------------------------|
+| `search`  | string | —          | Filtra por nome ou e-mail (parcial)    |
+| `page`    | int    | `0`        | Página (0-based)                       |
+| `size`    | int    | `20`       | Itens por página (máx. recomendado: 100) |
+| `sort`    | string | `fullName` | Campo de ordenação                     |
+
+**Corpo da requisição PATCH:**
+```json
+{
+  "isActive": true,
+  "roles": ["USER"]
+}
+```
+
+Roles disponíveis: `USER`, `ADMIN`.
+
+**Usuário admin padrão** (criado automaticamente):
+```
+E-mail: admin@admin.com
+Senha:  admin
+```
+
 ### Contas
 
 | Método | Endpoint                  | Descrição              | Auth |

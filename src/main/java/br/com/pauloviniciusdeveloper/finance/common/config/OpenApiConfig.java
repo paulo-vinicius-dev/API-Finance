@@ -15,8 +15,18 @@ public class OpenApiConfig {
     public OpenAPI openAPI() {
         return new OpenAPI()
             .info(new Info()
-                .title("Books API")
-                .description("API para gerenciamento de livros com autenticação JWT e controle de acesso por perfil (RBAC)")
+                .title("Finance API")
+                .description("""
+                    API REST para gerenciamento de finanças pessoais.
+
+                    **Autenticação:** todas as rotas protegidas exigem um Bearer token JWT obtido em `POST /api/v1/auth/login`.
+
+                    **Controle de acesso (RBAC):**
+                    - `USER` — acesso padrão às próprias transações, contas e categorias.
+                    - `ADMIN` — acesso total, incluindo gerenciamento de todos os usuários em `/api/v1/admin/users`.
+
+                    O usuário admin padrão é criado automaticamente na inicialização (`admin@admin.com`).
+                    """)
                 .version("v1.0.0"))
             .addSecurityItem(new SecurityRequirement().addList("bearerAuth"))
             .components(new Components()
