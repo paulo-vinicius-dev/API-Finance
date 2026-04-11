@@ -3,9 +3,9 @@ package br.com.pauloviniciusdeveloper.finance.account.service;
 import br.com.pauloviniciusdeveloper.finance.account.dto.AccountRequest;
 import br.com.pauloviniciusdeveloper.finance.account.entity.Account;
 import br.com.pauloviniciusdeveloper.finance.account.repository.AccountRepository;
-import br.com.pauloviniciusdeveloper.finance.common.exception.ConflictException;
 import br.com.pauloviniciusdeveloper.finance.common.exception.ResourceNotFoundException;
 import br.com.pauloviniciusdeveloper.finance.recurring.repository.RecurringRepository;
+import br.com.pauloviniciusdeveloper.finance.transaction.repository.TransactionRepository;
 import br.com.pauloviniciusdeveloper.finance.user.dto.UserResponse;
 import br.com.pauloviniciusdeveloper.finance.user.entity.Role;
 import br.com.pauloviniciusdeveloper.finance.user.service.UserService;
@@ -36,6 +36,9 @@ class AccountServiceTest {
 
     @Mock
     private RecurringRepository recurringRepository;
+
+    @Mock
+    private TransactionRepository transactionRepository;
 
     @Mock
     private UserService userService;
@@ -120,18 +123,19 @@ class AccountServiceTest {
     class DeleteTests {
 
         @Test
-        @DisplayName("deve excluir conta com sucesso quando não há transações recorrentes")
+        @DisplayName("deve excluir conta e dados relacionados em cascata")
         void shouldDeleteAccount() {
             UUID accountId = UUID.randomUUID();
             UUID userId = UUID.randomUUID();
             Account account = mockAccount(accountId, userId);
 
             given(accountRepository.findByIdAndUserId(accountId, userId)).willReturn(Optional.of(account));
-            given(recurringRepository.existsByAccountId(accountId)).willReturn(false);
 
             accountService.deleteByIdAndUserId(accountId, userId);
 
-            verify(accountRepository).delete(account);
+            verify(transactionRepository).deleteByAccountId(accountId);
+            verify(recurringRepository).deleteByAccountId(accountId);
+            verify(accountRepository).deleteById(accountId);
         }
 
         @Test
@@ -145,24 +149,7 @@ class AccountServiceTest {
             assertThatThrownBy(() -> accountService.deleteByIdAndUserId(accountId, userId))
                     .isInstanceOf(ResourceNotFoundException.class);
 
-            verify(accountRepository, never()).delete(any());
-        }
-
-        @Test
-        @DisplayName("deve lançar ConflictException quando conta possui transações recorrentes")
-        void shouldThrowConflict_whenAccountHasRecurringTransactions() {
-            UUID accountId = UUID.randomUUID();
-            UUID userId = UUID.randomUUID();
-            Account account = mockAccount(accountId, userId);
-
-            given(accountRepository.findByIdAndUserId(accountId, userId)).willReturn(Optional.of(account));
-            given(recurringRepository.existsByAccountId(accountId)).willReturn(true);
-
-            assertThatThrownBy(() -> accountService.deleteByIdAndUserId(accountId, userId))
-                    .isInstanceOf(ConflictException.class)
-                    .hasMessageContaining("transações recorrentes");
-
-            verify(accountRepository, never()).delete(any());
+            verify(accountRepository, never()).deleteById(any());
         }
     }
 }

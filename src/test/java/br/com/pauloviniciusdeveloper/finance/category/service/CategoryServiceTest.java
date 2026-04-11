@@ -1,9 +1,12 @@
 package br.com.pauloviniciusdeveloper.finance.category.service;
 
+import br.com.pauloviniciusdeveloper.finance.budget.repository.BudgetRepository;
 import br.com.pauloviniciusdeveloper.finance.category.dto.CategoryRequest;
 import br.com.pauloviniciusdeveloper.finance.category.entity.Category;
 import br.com.pauloviniciusdeveloper.finance.category.repository.CategoryRepository;
 import br.com.pauloviniciusdeveloper.finance.common.exception.ResourceNotFoundException;
+import br.com.pauloviniciusdeveloper.finance.recurring.repository.RecurringRepository;
+import br.com.pauloviniciusdeveloper.finance.transaction.repository.TransactionRepository;
 import br.com.pauloviniciusdeveloper.finance.user.dto.UserResponse;
 import br.com.pauloviniciusdeveloper.finance.user.entity.Role;
 import br.com.pauloviniciusdeveloper.finance.user.entity.User;
@@ -32,6 +35,15 @@ class CategoryServiceTest {
 
     @Mock
     private CategoryRepository categoryRepository;
+
+    @Mock
+    private TransactionRepository transactionRepository;
+
+    @Mock
+    private RecurringRepository recurringRepository;
+
+    @Mock
+    private BudgetRepository budgetRepository;
 
     @Mock
     private UserService userService;
@@ -143,7 +155,7 @@ class CategoryServiceTest {
     class DeleteTests {
 
         @Test
-        @DisplayName("deve excluir categoria com sucesso")
+        @DisplayName("deve excluir categoria e dados relacionados em cascata")
         void shouldDelete() {
             UUID id = UUID.randomUUID();
             UUID userId = UUID.randomUUID();
@@ -151,10 +163,14 @@ class CategoryServiceTest {
             Category category = mockCategory(id, false, user);
 
             given(categoryRepository.findById(id)).willReturn(Optional.of(category));
+            given(categoryRepository.findByIdAndUserId(id, userId)).willReturn(Optional.of(category));
 
             categoryService.deleteByIdAndUserId(id, userId);
 
-            verify(categoryRepository).delete(category);
+            verify(transactionRepository).deleteByCategoryId(id);
+            verify(recurringRepository).deleteByCategoryId(id);
+            verify(budgetRepository).deleteByCategoryId(id);
+            verify(categoryRepository).deleteById(id);
         }
 
         @Test
