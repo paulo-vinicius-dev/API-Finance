@@ -2,9 +2,11 @@ package br.com.pauloviniciusdeveloper.finance.auth.service;
 
 import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import br.com.pauloviniciusdeveloper.finance.auth.dto.AuthRegisterRequest;
 import br.com.pauloviniciusdeveloper.finance.auth.dto.AuthRegisterResponse;
@@ -34,13 +36,20 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public AuthResponse login(LoginRequest request) {
         log.info("Login requested for email={}", maskEmail(request.email()));
-        var userDetails = userDetailsService.loadUserByUsername(request.email());
-        var userPrincipal = (UserPrincipal) userDetails;
+
+        UserPrincipal userPrincipal;
+        try {
+            var userDetails = userDetailsService.loadUserByUsername(request.email());
+            userPrincipal = (UserPrincipal) userDetails;
+        } catch (UsernameNotFoundException e) {
+            log.warn("Login failed — user not found for email={}", maskEmail(request.email()));
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
+        }
 
         if (!passwordEncoder.matches(request.password(), userPrincipal.getPassword())) {
             log.warn("Login failed due to invalid credentials for email={}",
                 maskEmail(request.email()));
-            throw new UsernameNotFoundException("Invalid credentials");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
         }
 
         var user = userPrincipal.user();
@@ -61,7 +70,7 @@ public class AuthServiceImpl implements AuthService {
         log.info("Refresh token requested");
         UUID userId = jwtTokenService.extractUserId(refreshToken);
         var user = userRepository.findById(userId)
-            .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token"));
 
         String newAccessToken = jwtTokenService.generateAccessToken(user);
         String newRefreshToken = jwtTokenService.generateRefreshToken(user);
