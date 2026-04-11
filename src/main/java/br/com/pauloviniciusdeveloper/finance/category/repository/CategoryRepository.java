@@ -32,4 +32,6 @@ public interface CategoryRepository extends JpaRepository<Category, UUID> {
 	);
 
 	Optional<Category> findByIdAndUserId(UUID id, UUID userId);
+
+	void deleteByUserId(UUID userId);
 }

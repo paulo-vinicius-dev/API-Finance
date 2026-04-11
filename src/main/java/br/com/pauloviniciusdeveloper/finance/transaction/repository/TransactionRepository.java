@@ -21,6 +21,12 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
 
 	Optional<Transaction> findByIdAndAccountUserId(UUID id, UUID userId);
 
+	void deleteByAccountId(UUID accountId);
+
+	void deleteByAccountUserId(UUID userId);
+
+	void deleteByCategoryId(UUID categoryId);
+
 	@Query("""
 		SELECT t FROM Transaction t
 		WHERE t.account.user.id = :userId

@@ -20,4 +20,10 @@ public interface RecurringRepository extends JpaRepository<RecurringTransaction,
     List<RecurringTransaction> findByIsActiveTrueAndNextDueDateLessThanEqual(LocalDate date);
 
     boolean existsByAccountId(UUID accountId);
+
+    void deleteByAccountId(UUID accountId);
+
+    void deleteByCategoryId(UUID categoryId);
+
+    void deleteByUserId(UUID userId);
 }

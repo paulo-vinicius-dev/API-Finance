@@ -1,15 +1,16 @@
 package br.com.pauloviniciusdeveloper.finance.account.service;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import br.com.pauloviniciusdeveloper.finance.account.dto.AccountRequest;
 import br.com.pauloviniciusdeveloper.finance.account.dto.AccountResponse;
 import br.com.pauloviniciusdeveloper.finance.account.entity.Account;
 import br.com.pauloviniciusdeveloper.finance.account.mapper.AccountMapper;
 import br.com.pauloviniciusdeveloper.finance.account.repository.AccountRepository;
-import br.com.pauloviniciusdeveloper.finance.common.exception.ConflictException;
 import br.com.pauloviniciusdeveloper.finance.common.exception.ResourceNotFoundException;
 import br.com.pauloviniciusdeveloper.finance.recurring.repository.RecurringRepository;
+import br.com.pauloviniciusdeveloper.finance.transaction.repository.TransactionRepository;
 import br.com.pauloviniciusdeveloper.finance.user.entity.User;
 import br.com.pauloviniciusdeveloper.finance.user.mapper.UserMapper;
 import br.com.pauloviniciusdeveloper.finance.user.service.UserService;
@@ -21,9 +22,10 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class AccountServiceImp implements AccountService {
-    
+
     private final AccountRepository accountRepository;
     private final RecurringRepository recurringRepository;
+    private final TransactionRepository transactionRepository;
     private final UserService userService;
 
     @Override
@@ -32,7 +34,7 @@ public class AccountServiceImp implements AccountService {
 
         Account account = AccountMapper.toEntity(accountRequest);
         account.setUser(user);
-        
+
         return AccountMapper.toResponse(accountRepository.save(account));
     }
 
@@ -62,15 +64,13 @@ public class AccountServiceImp implements AccountService {
     }
 
     @Override
+    @Transactional
     public void deleteByIdAndUserId(UUID id, UUID userId) {
-        Account account = accountRepository.findByIdAndUserId(id, userId)
+        accountRepository.findByIdAndUserId(id, userId)
             .orElseThrow(() -> new ResourceNotFoundException("Account", id));
 
-        if (recurringRepository.existsByAccountId(id)) {
-            throw new ConflictException(
-                "Não é possível excluir a conta pois ela possui transações recorrentes vinculadas. Remova ou reatribua as transações recorrentes antes de excluir.");
-        }
-
-        accountRepository.delete(account);
+        transactionRepository.deleteByAccountId(id);
+        recurringRepository.deleteByAccountId(id);
+        accountRepository.deleteById(id);
     }
 }

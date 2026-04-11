@@ -12,6 +12,9 @@ public interface UserService {
     UserResponse findByEmail(String email);
     UserResponse findById(UUID id);
 
+    // Self-service
+    void selfDelete(UUID id);
+
     // Admin-only operations
     Page<UserResponse> findAll(String search, Pageable pageable);
     UserResponse adminUpdate(UUID id, UserAdminUpdateRequest request);

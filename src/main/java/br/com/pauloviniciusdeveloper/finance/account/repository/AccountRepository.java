@@ -13,4 +13,5 @@ import br.com.pauloviniciusdeveloper.finance.account.entity.Account;
 public interface AccountRepository extends JpaRepository<Account, UUID> {
     List<Account> findByUserId(UUID userId);
     Optional<Account> findByIdAndUserId(UUID id, UUID userId);
+    void deleteByUserId(UUID userId);
 }

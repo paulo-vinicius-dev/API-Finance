@@ -4,13 +4,17 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import br.com.pauloviniciusdeveloper.finance.budget.repository.BudgetRepository;
 import br.com.pauloviniciusdeveloper.finance.category.dto.CategoryRequest;
 import br.com.pauloviniciusdeveloper.finance.category.dto.CategoryResponse;
 import br.com.pauloviniciusdeveloper.finance.category.entity.Category;
 import br.com.pauloviniciusdeveloper.finance.category.mapper.CategoryMapper;
 import br.com.pauloviniciusdeveloper.finance.category.repository.CategoryRepository;
 import br.com.pauloviniciusdeveloper.finance.common.exception.ResourceNotFoundException;
+import br.com.pauloviniciusdeveloper.finance.recurring.repository.RecurringRepository;
+import br.com.pauloviniciusdeveloper.finance.transaction.repository.TransactionRepository;
 import br.com.pauloviniciusdeveloper.finance.user.entity.User;
 import br.com.pauloviniciusdeveloper.finance.user.mapper.UserMapper;
 import br.com.pauloviniciusdeveloper.finance.user.service.UserService;
@@ -19,9 +23,11 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class CategoryServiceImpl implements CategoryService {
-    
+
     private final CategoryRepository categoryRepository;
-    
+    private final TransactionRepository transactionRepository;
+    private final RecurringRepository recurringRepository;
+    private final BudgetRepository budgetRepository;
     private final UserService userService;
 
     @Override
@@ -64,18 +70,21 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
+    @Transactional
     public void deleteByIdAndUserId(UUID id, UUID userId) {
-        Category existingCategory = categoryRepository.findById(id)
+        Category category = categoryRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Category", id));
 
-        if (existingCategory.isDefault()) {
+        if (category.isDefault()) {
             throw new IllegalArgumentException("Default categories cannot be deleted");
         }
 
-        Category category = categoryRepository.findById(id)
-            .filter(c -> c.getUser() != null && c.getUser().getId().equals(userId))
+        categoryRepository.findByIdAndUserId(id, userId)
             .orElseThrow(() -> new ResourceNotFoundException("Category", id));
 
-        categoryRepository.delete(category);
+        transactionRepository.deleteByCategoryId(id);
+        recurringRepository.deleteByCategoryId(id);
+        budgetRepository.deleteByCategoryId(id);
+        categoryRepository.deleteById(id);
     }
 }
